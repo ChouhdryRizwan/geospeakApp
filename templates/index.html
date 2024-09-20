@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Geo-Speak Translate</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        background-color: #f0f0f5;
+      }
+
+      .card {
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+      }
+
+      .card-header {
+        font-size: 1.5rem;
+        font-weight: bold;
+        background: #0063ff;
+      }
+
+      .card-header,
+      .btn {
+        border-radius: 10px;
+      }
+
+      .history-table {
+        margin-top: 30px;
+      }
+
+      .history-header {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #0063ff;
+      }
+
+      .header-container {
+        background: linear-gradient(90deg, #207500, #092d79, #0063ff);
+      }
+
+      .header {
+        color: white;
+        padding: 30px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+      }
+
+      .header h1 {
+        margin: 0;
+        flex-grow: 1;
+        text-align: center;
+        font-size: 2rem;
+      }
+
+      .logo-center {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+
+      .btn-success {
+        background: linear-gradient(90deg, #4caf50, #43a047);
+        border: none;
+      }
+
+      .btn-success:hover {
+        background: linear-gradient(90deg, #43a047, #388e3c);
+      }
+
+      .alert-info {
+        background-color: #f0f9ff;
+        color: #007bff;
+        border: 1px solid #007bff;
+      }
+      img {
+        width: 110px;
+        height: auto;
+      }
+
+      .footer {
+        background: linear-gradient(90deg, #0063ff, #092d79, #207500);
+        color: white;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="header-container">
+      <div class="header mx-5">
+        <!-- Left logo -->
+        <img
+          src="{{ url_for('static', filename='img/TECHWIZ-5.png') }}"
+          alt="Logo 1"
+        />
+
+        <!-- Center logo (Geo-Speak) -->
+        <img
+          src="{{ url_for('static', filename='img/GEO SPEAK LOGO.png') }}"
+          alt="Geo-Speak Logo"
+          class="logo-center"
+        />
+
+        <!-- Right logo -->
+        <img
+          src="{{ url_for('static', filename='img/logo.png') }}"
+          alt="Logo 2"
+          class="logo-right"
+        />
+      </div>
+    </div>
+    <div class="container mt-5">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <!-- Translation Form -->
+          <div class="card">
+            <div class="card-header bg-primary text-white">
+              Geo-Speak Translate
+            </div>
+            <div class="card-body">
+              <form id="translationForm">
+                <div class="mb-3">
+                  <label for="target_language" class="form-label"
+                    >Target Language:</label
+                  >
+                  <!-- Using datalist instead of select -->
+                  <input
+                    list="languages"
+                    class="form-control"
+                    id="target_language"
+                    name="target_language"
+                    placeholder="Start typing to select a language"
+                    required
+                  />
+                  <datalist id="languages">
+                    {% for language in languages %}
+                    <option value="{{ language }}"></option>
+                    {% endfor %}
+                  </datalist>
+                </div>
+                <div class="mb-3">
+                  <label for="source_text" class="form-label"
+                    >Text to Translate:</label
+                  >
+                  <textarea
+                    id="source_text"
+                    name="source_text"
+                    class="form-control"
+                    placeholder="Enter text to translate"
+                    required
+                  ></textarea>
+                </div>
+
+                <button
+                  id="btnSubmit"
+                  type="button"
+                  class="btn btn-success w-100"
+                  onclick="submitForm()"
+                >
+                  Translate
+                </button>
+              </form>
+
+              <!-- Result Section -->
+              <div
+                id="result"
+                class="mt-3 alert alert-info"
+                role="alert"
+                style="display: none"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Translation History Section -->
+          <div class="history-table mt-5" id="historyTable">
+            <div class="history-header">Translation History</div>
+            <table class="table table-bordered">
+              <thead>
+                <tr>
+                  <th>Original Text</th>
+                  <th>Target Language</th>
+                  <th>Translated Text</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="history">
+                <!-- Dynamic history rows will be inserted here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer mt-5">
+      <p class="py-3 fw-bold m-0">Developed By T-REX (APTECH METRO STAR GATE) &copy; 2024. All Rights Reserved.</p>
+  </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Load history from session storage on page load
+      document.addEventListener("DOMContentLoaded", function () {
+        loadHistoryFromSession();
+      });
+
+      function submitForm() {
+        let btnSubmit = document.getElementById("btnSubmit");
+        btnSubmit.innerHTML = "Loading ...";
+        btnSubmit.classList.replace("btn-success", "btn-primary");
+        const sourceText = document.getElementById("source_text").value;
+        const targetLanguage = document.getElementById("target_language").value;
+
+        fetch("/submit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            source_text: sourceText,
+            target_language: targetLanguage,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // Show the translated text
+            document.getElementById("result").style.display = "block";
+            document.getElementById("result").innerText =
+              "Translated Text: " + data.translated_text;
+            btnSubmit.innerHTML = "Translate";
+            btnSubmit.classList.replace("btn-primary", "btn-success");
+
+            // Add to history
+            addToHistory(sourceText, targetLanguage, data.translated_text);
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+
+      function addToHistory(sourceText, targetLanguage, translatedText) {
+        // Load history from session storage
+        let history =
+          JSON.parse(sessionStorage.getItem("translationHistory")) || [];
+
+        // Add new entry
+        const newEntry = { sourceText, targetLanguage, translatedText };
+        history.push(newEntry);
+
+        // Save to session storage
+        sessionStorage.setItem("translationHistory", JSON.stringify(history));
+
+        // Update HTML table
+        renderHistoryRow(newEntry, history.length - 1);
+        // Show history table
+        document.getElementById("historyTable").style.display = "block";
+      }
+
+      function loadHistoryFromSession() {
+        const history =
+          JSON.parse(sessionStorage.getItem("translationHistory")) || [];
+        history.forEach((entry, index) => {
+          renderHistoryRow(entry, index);
+        });
+
+        // Show history table if there are any entries
+        if (history.length > 0) {
+          document.getElementById("historyTable").style.display = "block";
+        }
+      }
+
+      function renderHistoryRow(entry, index) {
+        const historyTable = document.getElementById("history");
+        let rowHTML = `<tr id="row-${index}">
+                            <td>${entry.sourceText}</td>
+                            <td>${entry.targetLanguage}</td>
+                            <td>${entry.translatedText}</td>
+                            <td class="text-center"><span class="btn btn-outline-danger" onclick="deleteHistory(${index})">&times;</span></td>
+                          </tr>`;
+        historyTable.innerHTML += rowHTML;
+      }
+
+      function deleteHistory(index) {
+        // Load history from session storage
+        let history =
+          JSON.parse(sessionStorage.getItem("translationHistory")) || [];
+
+        // Remove the selected entry
+        history.splice(index, 1);
+
+        // Save the updated history back to session storage
+        sessionStorage.setItem("translationHistory", JSON.stringify(history));
+
+        // Remove the corresponding row from the table
+        document.getElementById(`row-${index}`).remove();
+
+        // Re-render the table to update IDs after deletion
+        document.getElementById("history").innerHTML = "";
+        loadHistoryFromSession();
+      }
+    </script>
+  </body>
+</html>
